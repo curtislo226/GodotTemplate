@@ -1,0 +1,22 @@
+; Engine configuration file.
+; Generated from godot-template. Most settings are best edited in the
+; Godot editor UI rather than this file directly.
+;
+; After cloning: in Claude Code, run `/godot-bootstrap` to scaffold
+; autoloads + CLAUDE.md tailored to this project's scope.
+
+config_version=5
+
+[application]
+
+config/name="Replace Me"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

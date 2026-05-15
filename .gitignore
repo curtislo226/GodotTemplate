@@ -1,0 +1,27 @@
+# Godot 4
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Auto-generated translation binaries — keep CSV source, regenerate locally.
+# Uncomment to keep .translation files out of git.
+# *.translation
+
+# .NET (only relevant if [dotnet] section is added to project.godot)
+.mono/
+.vs/
+*.csproj.user
+mono_crash.*.json
+bin/
+obj/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.tmp
+*~

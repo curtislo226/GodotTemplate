@@ -1,0 +1,23 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  gut:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.0
+          use-dotnet: false
+
+      - name: Run GUT
+        # Exit code 0 = all tests passed (pending tests don't affect exit code).
+        # Add tests under res://tests/ (.gutconfig.json controls discovery).
+        run: godot --headless -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json -gexit
