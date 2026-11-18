@@ -1,0 +1,90 @@
+# build_kit：測試與建置（由 tools/install.gd 複製到 .github/workflows/build_kit.yml）。
+#   每次 push：跑測試、匯出 Web 確認還能建（不留成品）
+#   推上 main：匯出所有平台，成品保留 30 天
+#   打 v* tag：正式建置、建立 GitHub Release；build.cfg 有 [itch] target 且設了 BUTLER_API_KEY 時上傳 itch.io
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Also upload to itch.io
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: godot
+        uses: ./.github/actions/setup-godot
+      - name: Tests
+        run: '"${{ steps.godot.outputs.godot }}" --headless --path . -s res://addons/build_kit/tools/build.gd -- --tests-only'
+
+  build:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      FULL: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: godot
+        uses: ./.github/actions/setup-godot
+        with:
+          templates: "true"
+      - name: Build
+        id: build
+        run: '"${{ steps.godot.outputs.godot }}" --headless --path . -s res://addons/build_kit/tools/build.gd -- --skip-tests --target=${{ env.FULL == ''true'' && ''all'' || ''web'' }}'
+      - name: Keep the builds
+        if: env.FULL == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ steps.build.outputs.version_file }}
+          path: ${{ steps.build.outputs.dir }}/*.zip
+          retention-days: 30
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIR: ${{ steps.build.outputs.dir }}
+        run: |
+          set -euo pipefail
+          notes=(--generate-notes)
+          if [ -f CHANGELOG.md ]; then notes=(--notes-file CHANGELOG.md); fi
+          gh release create "$GITHUB_REF_NAME" "$DIR"/*.zip --title "$GITHUB_REF_NAME" "${notes[@]}"
+      - name: Upload to itch.io
+        if: steps.build.outputs.itch_target != '' && (startsWith(github.ref, 'refs/tags/v') || inputs.upload)
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          TARGET: ${{ steps.build.outputs.itch_target }}
+          VERSION: ${{ steps.build.outputs.version }}
+          WEB_DIR: ${{ steps.build.outputs.web_dir }}
+          WEB_CHANNEL: ${{ steps.build.outputs.itch_web }}
+          WINDOWS_DIR: ${{ steps.build.outputs.windows_dir }}
+          WINDOWS_CHANNEL: ${{ steps.build.outputs.itch_windows }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "::warning::BUTLER_API_KEY 沒有設定，略過 itch.io 上傳（步驟見 addons/build_kit/README.md「上傳 itch.io」）"
+            exit 0
+          fi
+          curl -fsSL -o butler.zip "https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default"
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+          if [ -n "$WEB_DIR" ] && [ -n "$WEB_CHANNEL" ]; then ./butler/butler push "$WEB_DIR" "${TARGET}:${WEB_CHANNEL}" --userversion "$VERSION"; fi
+          if [ -n "$WINDOWS_DIR" ] && [ -n "$WINDOWS_CHANNEL" ]; then ./butler/butler push "$WINDOWS_DIR" "${TARGET}:${WINDOWS_CHANNEL}" --userversion "$VERSION"; fi

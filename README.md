@@ -1,4 +1,4 @@
-# Godot 4 Template
+# Godot 4.8 Template
 
 Opinionated starter for new Godot 4 projects. Pairs with the `/godot-bootstrap`
 Claude Code skill, which fills in autoloads + `CLAUDE.md` based on the
@@ -22,11 +22,15 @@ godot project.godot
 
 | Artifact | Purpose |
 |----------|---------|
-| `addons/gut/` | [GUT](https://github.com/bitwes/Gut) — Godot Unit Testing framework, ready to use |
+| `addons/gut/` | [GUT](https://github.com/bitwes/Gut) 9.7.1 — Godot Unit Testing framework, ready to use |
+| `addons/build_kit/` | From [GodotToolBox](https://github.com/curtislo226/GodotToolBox): Windows + Web builds, git-tag versions, CI, itch.io upload (see `addons/build_kit/README.md`) |
+| `build.cfg` | build_kit settings — **set `name` to your game's file name** |
+| `build.ps1` | Local build: tests → Web + Windows → `build/<version>/` (same code as CI) |
+| `export_presets.cfg` | Web (no threads, no GDExtension) + Windows (embedded pck) presets — tracked in git |
 | `.gutconfig.json` | Default GUT config; tests discovered under `res://tests/` |
-| `.github/workflows/test.yml` | CI runs GUT on push + PR (Ubuntu, Godot 4.6.0) |
+| `.github/workflows/build_kit.yml` | CI: tests + Web export on every push; all platforms kept 30 days on main; `v*` tag → GitHub Release (+ itch.io if configured) |
 | `.gitignore` | Godot + .NET + OS noise excluded |
-| `project.godot` | Forward+ renderer, GUT plugin enabled, no `main_scene` set |
+| `project.godot` | Godot 4.8, GL Compatibility renderer (needed for Web), GUT plugin enabled, no `main_scene` set |
 | `icon.svg` | Default Godot icon — replace with your game's icon |
 | Empty folder skeleton | `domain/`, `presentation/`, `input/`, `scripts/`, `tests/domain/`, `assets/audio/{ui/}`, `assets/images/`, `assets/fonts/`, `localization/` |
 
@@ -53,13 +57,15 @@ These are project-specific decisions and live in the `/godot-bootstrap` skill:
 
 3. **Replace `icon.svg`** with your game's icon.
 
-4. **Set `config/name`** in Project Settings (or edit `project.godot` directly).
+4. **Set `config/name`** in Project Settings (or edit `project.godot` directly), the `name` in `build.cfg`,
+   and `application/product_name` in the Windows export preset.
 
 5. **Start building.** Verify GUT works at any time:
    ```bash
    godot -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json -gexit
    ```
-   Exit code 0 = all tests passed.
+   Exit code 0 = all tests passed. Build everything locally with `./build.ps1`
+   (`-Check` only validates the settings). Show the version in game with `BuildInfo.label()`.
 
 ## Updating bundled GUT
 

@@ -1,0 +1,76 @@
+# build_kit：在 Linux runner 上準備 build.cfg 指定版本的 Godot（與匯出模板），有快取；最後匯入專案。
+# 由 tools/install.gd 複製到 .github/actions/setup-godot/action.yml。
+name: Setup Godot
+description: Download (or restore from cache) the Godot version pinned in build.cfg, then import the project.
+inputs:
+  templates:
+    description: Also install the export templates
+    default: "false"
+outputs:
+  godot:
+    description: Path to the Godot binary
+    value: ${{ steps.version.outputs.bin }}
+  version:
+    description: The Godot version from build.cfg
+    value: ${{ steps.version.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="$(sed -n 's/^[[:space:]]*godot_version[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' build.cfg | head -n 1)"
+        test -n "$version" || { echo "build.cfg has no godot_version"; exit 1; }
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+        echo "bin=${HOME}/godot-bin/${version}/godot" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache@v6
+      with:
+        path: ~/godot-bin/${{ steps.version.outputs.version }}
+        key: godot-bin-${{ runner.os }}-${{ steps.version.outputs.version }}
+
+    - uses: actions/cache@v6
+      if: inputs.templates == 'true'
+      with:
+        path: ~/.local/share/godot/export_templates
+        key: godot-templates-${{ steps.version.outputs.version }}
+
+    - shell: bash
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        TEMPLATES: ${{ inputs.templates }}
+      run: |
+        set -euo pipefail
+        base="https://github.com/godotengine/godot-builds/releases/download/${VERSION}"
+        dir="${HOME}/godot-bin/${VERSION}"
+        if [ ! -x "${dir}/godot" ]; then
+          mkdir -p "$dir"
+          curl -fsSL -o /tmp/godot.zip "${base}/Godot_v${VERSION}_linux.x86_64.zip"
+          unzip -q -o /tmp/godot.zip -d "$dir"
+          mv "$(find "$dir" -maxdepth 1 -type f -name 'Godot_v*_linux.x86_64' | head -n 1)" "${dir}/godot"
+          chmod +x "${dir}/godot"
+        fi
+        "${dir}/godot" --headless --version
+        # 4.8-dev6 → 4.8.dev6（匯出模板資料夾的名稱）
+        templates_dir="${HOME}/.local/share/godot/export_templates/${VERSION/-/.}"
+        if [ "$TEMPLATES" = "true" ] && [ ! -f "${templates_dir}/version.txt" ]; then
+          curl -fsSL -o /tmp/templates.tpz "${base}/Godot_v${VERSION}_export_templates.tpz"
+          unzip -q -o /tmp/templates.tpz -d /tmp/tpl
+          installed="$(cat /tmp/tpl/templates/version.txt)"
+          mkdir -p "${HOME}/.local/share/godot/export_templates/${installed}"
+          mv /tmp/tpl/templates/* "${HOME}/.local/share/godot/export_templates/${installed}/"
+        fi
+
+    - shell: bash
+      env:
+        GODOT: ${{ steps.version.outputs.bin }}
+      run: |
+        set -euo pipefail
+        "$GODOT" --headless --import > "${RUNNER_TEMP}/import.log" 2>&1 || true
+        "$GODOT" --headless --import >> "${RUNNER_TEMP}/import.log" 2>&1 || true
+        if ! grep -q BuildPipeline .godot/global_script_class_cache.cfg 2>/dev/null; then
+          tail -n 60 "${RUNNER_TEMP}/import.log"
+          echo "::error::匯入專案後沒有 build_kit 的類別（上面是匯入輸出的最後幾行）"
+          exit 1
+        fi

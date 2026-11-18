@@ -2,7 +2,7 @@
 .godot/
 .import/
 export.cfg
-export_presets.cfg
+# export_presets.cfg 要進 git（build_kit；密碼在 .godot/export_credentials.cfg，不在這個檔）
 
 # Auto-generated translation binaries — keep CSV source, regenerate locally.
 # Uncomment to keep .translation files out of git.
@@ -25,3 +25,7 @@ Thumbs.db
 .vscode/
 *.tmp
 *~
+
+# build_kit
+/build/
+addons/build_kit/build_info.gen.tres*

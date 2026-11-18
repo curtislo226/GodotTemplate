@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3]
+
+[ext_resource type="Resource" path="res://addons/build_kit/tests/fixture/assets/used.tres" id="1_used"]
+
+[resource]
+metadata/link = ExtResource("1_used")

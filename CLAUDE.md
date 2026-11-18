@@ -43,6 +43,14 @@ godot -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json -gexit
 
 Exit code 0 = all pass.
 
+### Build & CI（build_kit）
+
+`addons/build_kit/` comes from GodotToolBox — don't modify it; report problems to the GodotToolBox Agent.
+Settings live in `build.cfg`; local `./build.ps1` and `.github/workflows/build_kit.yml` run the same code.
+Versions come from git tags (`v0.1.0`). Details: `addons/build_kit/README.md`.
+When the user wants to upload to itch.io, remind them to set the `BUTLER_API_KEY` secret themselves
+(never handle the key) and give them the README's "上傳 itch.io" steps.
+
 ---
 
 ## What `/godot-bootstrap` will add to this file
